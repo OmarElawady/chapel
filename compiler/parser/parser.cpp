@@ -33,6 +33,7 @@
 #include "stringutil.h"
 #include "symbol.h"
 #include "wellknown.h"
+#include "antlr.h"
 
 #include <cstdlib>
 
@@ -541,112 +542,166 @@ static bool haveAlreadyParsed(const char* path) {
 }
 
 
-static ModuleSymbol* parseFile(const char* path,
-                               ModTag      modTag,
-                               bool        namedOnCommandLine) {
-  ModuleSymbol* retval = NULL;
+static BlockStmt *bisonParse(const char *path,
+                             ModTag modTag,
+                             bool namedOnCommandLine)
+{
+  FILE *fp = openInputFile(path);
+  // State for the lexer
+  int lexerStatus = 100;
+
+  // State for the parser
+  yypstate *parser = yypstate_new();
+  int parserStatus = YYPUSH_MORE;
+  YYLTYPE yylloc;
+  ParserContext context;
+
+  currentFileNamedOnCommandLine = namedOnCommandLine;
+
+  // If this file only contains explicit module declarations, this
+  // 'currentModuleName' is not accurate, but also should not be
+  // used (because when the 'module' declarations are found, they
+  // will override it).
+  currentModuleName = filenameToModulename(path);
+  currentModuleType = modTag;
+
+  yyblock = NULL;
+  yyfilename = path;
+  yystartlineno = 1;
+
+  yylloc.first_line = 1;
+  yylloc.first_column = 0;
+  yylloc.last_line = 1;
+  yylloc.last_column = 0;
+
+  chplLineno = 1;
+
+  if (printModuleFiles && (modTag != MOD_INTERNAL || developer))
+  {
+    if (sFirstFile)
+    {
+      fprintf(stderr, "Parsing module files:\n");
+
+      sFirstFile = false;
+    }
+
+    fprintf(stderr, "  %s\n", cleanFilename(path));
+  }
+
+  if (namedOnCommandLine == true)
+  {
+    startCountingFileTokens(path);
+  }
+
+  yylex_init(&context.scanner);
+
+  stringBufferInit();
+
+  yyset_in(fp, context.scanner);
+
+  while (lexerStatus != 0 && parserStatus == YYPUSH_MORE)
+  {
+    YYSTYPE yylval;
+
+    lexerStatus = yylex(&yylval, &yylloc, context.scanner);
+
+    if (lexerStatus >= 0)
+    {
+      parserStatus = yypush_parse(parser,
+                                  lexerStatus,
+                                  &yylval,
+                                  &yylloc,
+                                  &context);
+    }
+    else if (lexerStatus == YYLEX_BLOCK_COMMENT)
+    {
+      context.latestComment = yylval.pch;
+    }
+    else if (lexerStatus == YYLEX_SINGLE_LINE_COMMENT)
+    {
+      context.latestComment = NULL;
+    }
+  }
+
+  if (namedOnCommandLine == true)
+  {
+    stopCountingFileTokens(context.scanner);
+  }
+
+  // Cleanup after the parser
+  yypstate_delete(parser);
+
+  // Cleanup after the lexer
+  yylex_destroy(context.scanner);
+
+  closeInputFile(fp);
+
+  yylloc.first_line = -1;
+  yylloc.first_column = 0;
+  yylloc.last_line = -1;
+  yylloc.last_column = 0;
+  return yyblock;
+}
+
+static BlockStmt *antlrParse(const char *path,
+                             ModTag modTag,
+                             bool namedOnCommandLine)
+{
+  currentFileNamedOnCommandLine = namedOnCommandLine;
+  currentModuleName = filenameToModulename(path);
+  currentModuleType = modTag;
+  yystartlineno = -1;
+  yyfilename = path;
+  std::ifstream fp;
+  fp.open(path);
+  antlr4::ANTLRInputStream input(fp);
+  ChapelLexer lexer(&input);
+  antlr4::CommonTokenStream tokens(&lexer);
+  ChapelParser parser(&tokens);
+  ChapelParser::ProgramContext *tree = parser.program();
+
+  ANTLRVisitor visitor;
+  return visitor.visitProgram(tree);
+}
+
+static ModuleSymbol *parseFile(const char *path,
+                               ModTag modTag,
+                               bool namedOnCommandLine)
+{
+  ModuleSymbol *retval = NULL;
 
   // Make sure we haven't already parsed this file
-  if (haveAlreadyParsed(path)) {
+  if (haveAlreadyParsed(path))
+  {
     return NULL;
   }
 
-  if (FILE* fp = openInputFile(path)) {
-    gFilenameLookup.push_back(path);
-
-    // State for the lexer
-    int           lexerStatus  = 100;
-
-    // State for the parser
-    yypstate*     parser       = yypstate_new();
-    int           parserStatus = YYPUSH_MORE;
-    YYLTYPE       yylloc;
-    ParserContext context;
-
-    currentFileNamedOnCommandLine = namedOnCommandLine;
-
-    // If this file only contains explicit module declarations, this
-    // 'currentModuleName' is not accurate, but also should not be
-    // used (because when the 'module' declarations are found, they
-    // will override it).
-    currentModuleName             = filenameToModulename(path);
-    currentModuleType             = modTag;
-
-    yyblock                       = NULL;
-    yyfilename                    = path;
-    yystartlineno                 = 1;
-
-    yylloc.first_line             = 1;
-    yylloc.first_column           = 0;
-    yylloc.last_line              = 1;
-    yylloc.last_column            = 0;
-
-    chplLineno                    = 1;
-
-    if (printModuleFiles && (modTag != MOD_INTERNAL || developer)) {
-      if (sFirstFile) {
-        fprintf(stderr, "Parsing module files:\n");
-
-        sFirstFile = false;
-      }
-
-      fprintf(stderr, "  %s\n", cleanFilename(path));
-    }
-
-    if (namedOnCommandLine == true) {
-      startCountingFileTokens(path);
-    }
-
-    yylex_init(&context.scanner);
-
-    stringBufferInit();
-
-    yyset_in(fp, context.scanner);
-
-    while (lexerStatus != 0 && parserStatus == YYPUSH_MORE) {
-      YYSTYPE yylval;
-
-      lexerStatus = yylex(&yylval, &yylloc, context.scanner);
-
-      if        (lexerStatus >= 0) {
-        parserStatus          = yypush_parse(parser,
-                                             lexerStatus,
-                                             &yylval,
-                                             &yylloc,
-                                             &context);
-
-      } else if (lexerStatus == YYLEX_BLOCK_COMMENT) {
-        context.latestComment = yylval.pch;
-      } else if (lexerStatus == YYLEX_SINGLE_LINE_COMMENT) {
-        context.latestComment = NULL;
-      }
-    }
-
-    if (namedOnCommandLine == true) {
-      stopCountingFileTokens(context.scanner);
-    }
-
-    // Cleanup after the parser
-    yypstate_delete(parser);
-
-    // Cleanup after the lexer
-    yylex_destroy(context.scanner);
-
+  if (FILE *fp = openInputFile(path))
+  {
     closeInputFile(fp);
-
+    gFilenameLookup.push_back(path);
+    if (namedOnCommandLine && useAntlr)
+      yyblock = antlrParse(path, modTag, namedOnCommandLine);
+    else
+      yyblock = bisonParse(path, modTag, namedOnCommandLine);
     // Halt now if there were parse errors.
     USR_STOP();
 
-    if (yyblock == NULL) {
+    if (yyblock == NULL)
+    {
       INT_FATAL("yyblock should always be non-NULL after yyparse()");
+    }
+    else if (containsOnlyModules(yyblock, path) == true)
+    {
+      ModuleSymbol *moduleLast = 0;
+      int moduleCount = 0;
 
-    } else if (containsOnlyModules(yyblock, path) == true) {
-      ModuleSymbol* moduleLast  = 0;
-      int           moduleCount = 0;
-
-      for_alist(stmt, yyblock->body) {
-        if (DefExpr* defExpr = toDefExpr(stmt)) {
-          if (ModuleSymbol* modSym = toModuleSymbol(defExpr->sym)) {
+      for_alist(stmt, yyblock->body)
+      {
+        if (DefExpr *defExpr = toDefExpr(stmt))
+        {
+          if (ModuleSymbol *modSym = toModuleSymbol(defExpr->sym))
+          {
 
             defExpr->remove();
 
@@ -654,18 +709,20 @@ static ModuleSymbol* parseFile(const char* path,
 
             addModuleToDoneList(modSym);
 
-            moduleLast  = modSym;
+            moduleLast = modSym;
             moduleCount = moduleCount + 1;
           }
         }
       }
 
-      if (moduleCount == 1) {
+      if (moduleCount == 1)
+      {
         retval = moduleLast;
       }
-
-    } else {
-      const char* modName = filenameToModulename(path);
+    }
+    else
+    {
+      const char *modName = filenameToModulename(path);
 
       retval = buildModule(modName, modTag, yyblock, yyfilename, false, false, NULL);
 
@@ -676,24 +733,20 @@ static ModuleSymbol* parseFile(const char* path,
       addModuleToDoneList(retval);
     }
 
-    yyfilename                    =  NULL;
-
-    yylloc.first_line             =    -1;
-    yylloc.first_column           =     0;
-    yylloc.last_line              =    -1;
-    yylloc.last_column            =     0;
-
-    yystartlineno                 =    -1;
-    chplLineno                    =    -1;
+    yyfilename = NULL;
+    yystartlineno = -1;
+    chplLineno = -1;
 
     currentFileNamedOnCommandLine = false;
-
-  } else {
+  }
+  else
+  {
     fprintf(stderr,
             "ParseFile: Unable to open \"%s\" for reading\n",
             path);
   }
-  if (retval && strcmp(retval->name, "IO") == 0) {
+  if (retval && strcmp(retval->name, "IO") == 0)
+  {
     ioModule = retval;
   }
 

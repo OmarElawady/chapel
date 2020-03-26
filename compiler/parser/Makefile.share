@@ -19,7 +19,12 @@ PARSER_SRCS =                                                      \
               bison-chapel.cpp                                     \
               flex-chapel.cpp                                      \
               countTokens.cpp                                      \
-              parser.cpp
+              parser.cpp                                           \
+              antlr.cpp                                            \
+              ChapelBaseVisitor.cpp                                \
+              ChapelVisitor.cpp                                    \
+              ChapelLexer.cpp                                      \
+              ChapelParser.cpp
 
 SRCS        = $(PARSER_SRCS)
 

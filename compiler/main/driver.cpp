@@ -112,6 +112,7 @@ bool fMultiLocaleInterop = false;
 bool fMultiLocaleLibraryDebug = false;
 
 bool no_codegen = false;
+bool useAntlr = false;
 int  debugParserLevel = 0;
 bool fVerify = false;
 bool ignore_errors = false;
@@ -890,6 +891,7 @@ Record components:
 static ArgumentDescription arg_desc[] = {
  {"", ' ', NULL, "Module Processing Options", NULL, NULL, NULL, NULL},
  {"count-tokens", ' ', NULL, "[Don't] count tokens in main modules", "N", &countTokens, "CHPL_COUNT_TOKENS", NULL},
+ {"use-antlr", ' ', NULL, "[Don't] use antlr in parsing", "N", &useAntlr, "CHPL_USE_ANTLR", NULL},
  {"main-module", ' ', "<module>", "Specify entry point module", "S256", NULL, NULL, ModuleSymbol::mainModuleNameSet },
  {"module-dir", 'M', "<directory>", "Add directory to module search path", "P", NULL, NULL, addModulePath},
  {"print-code-size", ' ', NULL, "[Don't] print code size of main modules", "N", &printTokens, "CHPL_PRINT_TOKENS", NULL},

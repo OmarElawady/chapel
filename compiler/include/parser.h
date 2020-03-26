@@ -27,6 +27,7 @@ class VisibilityStmt;
 
 extern int         chplLineno;
 extern bool        chplParseString;
+extern bool        useAntlr;
 extern const char* chplParseStringMsg;
 
 extern ModTag      currentModuleType;

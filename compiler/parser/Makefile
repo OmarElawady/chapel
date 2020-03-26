@@ -74,11 +74,34 @@ include $(COMPILER_ROOT)/make/Makefile.compiler.foot
 # Use bison-chapel.h as prerequisite, to ensure bison only invoked once, even
 # with parallel execution.
 #
-$(OBJ_SUBDIR)/bison-chapel.o: ../include/bison-chapel.h bison-chapel.cpp $(OBJ_SUBDIR_MADE)
+$(OBJ_SUBDIR)/bison-chapel.o: ../include/antlr.h ../include/bison-chapel.h bison-chapel.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) $(COMP_CXXFLAGS_NONCHPL) -o $@ bison-chapel.cpp
 
 $(OBJ_SUBDIR)/flex-chapel.o: ../include/bison-chapel.h ../include/flex-chapel.h flex-chapel.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) $(COMP_CXXFLAGS_NONCHPL) -o $@ flex-chapel.cpp
 
-$(OBJ_SUBDIR)/parser.o:  ../include/bison-chapel.h ../include/flex-chapel.h parser.cpp $(OBJ_SUBDIR_MADE)
+$(OBJ_SUBDIR)/parser.o:  ../include/antlr.h ../include/bison-chapel.h ../include/flex-chapel.h parser.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) -o $@ parser.cpp
+
+$(OBJ_SUBDIR)/antlr.o: ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h antlr.cpp $(OBJ_SUBDIR_MADE)
+	$(CXX) -c $(COMP_CXXFLAGS) -o $@ antlr.cpp
+
+$(OBJ_SUBDIR)/ChapelBaseVisitor.o:  ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h ChapelBaseVisitor.cpp $(OBJ_SUBDIR_MADE)
+	$(CXX) -c $(COMP_CXXFLAGS) -o $@ ChapelBaseVisitor.cpp
+
+$(OBJ_SUBDIR)/ChapelVisitor.o:  ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h ChapelVisitor.cpp $(OBJ_SUBDIR_MADE)
+	$(CXX) -c $(COMP_CXXFLAGS) -o $@ ChapelVisitor.cpp
+
+$(OBJ_SUBDIR)/ChapelLexer.o: ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h ChapelLexer.cpp $(OBJ_SUBDIR_MADE)
+	$(CXX) -c $(COMP_CXXFLAGS) -o $@ ChapelLexer.cpp
+
+$(OBJ_SUBDIR)/ChapelParser.o: ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h ChapelParser.cpp $(OBJ_SUBDIR_MADE)
+	$(CXX) -c $(COMP_CXXFLAGS) -o $@ ChapelParser.cpp
+
+ChapelParser.cpp ChapelLexer.cpp ChapelVisitor.cpp ChapelBaseVisitor.cpp: Chapel.g4
+	java -Xmx500M -cp "/usr/local/lib/antlr-4.7.1-complete.jar:$CLASSPATH" org.antlr.v4.Tool -visitor -no-listener -Dlanguage=Cpp Chapel.g4
+	mv ChapelBaseVisitor.h ../include/ChapelBaseVisitor.h
+	mv ChapelVisitor.h ../include/ChapelVisitor.h
+	mv ChapelLexer.h ../include/ChapelLexer.h
+	mv ChapelParser.h ../include/ChapelParser.h
+	

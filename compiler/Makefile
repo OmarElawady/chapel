@@ -103,7 +103,7 @@ EXECS = $(CHPL) $(CHPLDOC)
 PRETARGETS = $(BUILD_VERSION_FILE) $(CONFIGURED_PREFIX_FILE) llvm $(CLANG_SETTINGS_FILE)
 TARGETS = $(CHPL) $(CHPL_OLD)
 
-LIBS = -lm
+LIBS = -lm -lantlr4-runtime
 
 # Set up variables representing paths that will be installed
 # and how to fix them (for CLANG_SETTINGS).
