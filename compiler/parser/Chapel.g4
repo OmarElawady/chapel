@@ -52,7 +52,7 @@ actual: expr
 ;
 
 exponentiation_expr : call_expr
-                    | exponentiation_expr EXP call_expr
+                    | call_expr EXP exponentiation_expr
 ;
 
 multiplication_expr : exponentiation_expr
