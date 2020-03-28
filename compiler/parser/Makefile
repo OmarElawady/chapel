@@ -80,25 +80,28 @@ $(OBJ_SUBDIR)/bison-chapel.o: ../include/antlr.h ../include/bison-chapel.h bison
 $(OBJ_SUBDIR)/flex-chapel.o: ../include/bison-chapel.h ../include/flex-chapel.h flex-chapel.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) $(COMP_CXXFLAGS_NONCHPL) -o $@ flex-chapel.cpp
 
-$(OBJ_SUBDIR)/parser.o:  ../include/antlr.h ../include/bison-chapel.h ../include/flex-chapel.h parser.cpp $(OBJ_SUBDIR_MADE)
+$(OBJ_SUBDIR)/parser.o:  antlr_headers ../include/antlr.h ../include/bison-chapel.h ../include/flex-chapel.h parser.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) -o $@ parser.cpp
 
-$(OBJ_SUBDIR)/antlr.o: ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h antlr.cpp $(OBJ_SUBDIR_MADE)
+$(OBJ_SUBDIR)/antlr.o: antlr_headers antlr.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) -o $@ antlr.cpp
 
-$(OBJ_SUBDIR)/ChapelBaseVisitor.o:  ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h ChapelBaseVisitor.cpp $(OBJ_SUBDIR_MADE)
+$(OBJ_SUBDIR)/ChapelBaseVisitor.o: antlr_headers ChapelBaseVisitor.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) -o $@ ChapelBaseVisitor.cpp
 
-$(OBJ_SUBDIR)/ChapelVisitor.o:  ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h ChapelVisitor.cpp $(OBJ_SUBDIR_MADE)
+$(OBJ_SUBDIR)/ChapelVisitor.o: antlr_headers ChapelVisitor.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) -o $@ ChapelVisitor.cpp
 
-$(OBJ_SUBDIR)/ChapelLexer.o: ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h ChapelLexer.cpp $(OBJ_SUBDIR_MADE)
+$(OBJ_SUBDIR)/ChapelLexer.o: antlr_headers ChapelLexer.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) -o $@ ChapelLexer.cpp
 
-$(OBJ_SUBDIR)/ChapelParser.o: ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h ChapelParser.cpp $(OBJ_SUBDIR_MADE)
+$(OBJ_SUBDIR)/ChapelParser.o: antlr_headers ChapelParser.cpp $(OBJ_SUBDIR_MADE)
 	$(CXX) -c $(COMP_CXXFLAGS) -o $@ ChapelParser.cpp
 
-ChapelParser.cpp ChapelLexer.cpp ChapelVisitor.cpp ChapelBaseVisitor.cpp: Chapel.g4
+
+antlr_headers: ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h
+
+ChapelParser.cpp ChapelLexer.cpp ChapelVisitor.cpp ChapelBaseVisitor.cpp ../include/ChapelBaseVisitor.h ../include/ChapelVisitor.h ../include/ChapelLexer.h ../include/ChapelParser.h: Chapel.g4
 	java -Xmx500M -cp "/usr/local/lib/antlr-4.7.1-complete.jar:$CLASSPATH" org.antlr.v4.Tool -visitor -no-listener -Dlanguage=Cpp Chapel.g4
 	mv ChapelBaseVisitor.h ../include/ChapelBaseVisitor.h
 	mv ChapelVisitor.h ../include/ChapelVisitor.h
